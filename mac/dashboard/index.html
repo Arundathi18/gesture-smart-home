@@ -1,0 +1,191 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#f4f1ea" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#16150f" media="(prefers-color-scheme: dark)">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>Gesture Home</title>
+<style>
+  :root {
+    --bg: #f4f1ea;
+    --card: #fffdf8;
+    --ink: #1d1b16;
+    --muted: #6f6a5f;
+    --line: #e2ddd1;
+    --on: #f2b632;
+    --on-glow: rgba(242, 182, 50, 0.35);
+    --on-ink: #3a2a00;
+    --good: #2f8f5b;
+    --bad: #c2453b;
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #16150f;
+      --card: #211f18;
+      --ink: #f1ede3;
+      --muted: #a39d90;
+      --line: #35322a;
+      --on-glow: rgba(242, 182, 50, 0.28);
+      color-scheme: dark;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    background: var(--bg);
+    color: var(--ink);
+    font: 16px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    padding: calc(env(safe-area-inset-top, 0px) + 24px) 20px calc(env(safe-area-inset-bottom, 0px) + 24px);
+    -webkit-tap-highlight-color: transparent;
+  }
+  main { max-width: 480px; margin: 0 auto; }
+  header { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+  h1 { font-size: 26px; margin: 0; letter-spacing: -0.02em; }
+  .status { display: flex; gap: 14px; font-size: 13px; color: var(--muted); }
+  .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--muted); margin-right: 6px; vertical-align: 1px; }
+  .dot.good { background: var(--good); }
+  .dot.bad { background: var(--bad); }
+  .summary { color: var(--muted); margin: 6px 0 24px; font-size: 15px; }
+
+  .rooms { display: grid; gap: 12px; }
+  .room {
+    display: flex; align-items: center; gap: 16px;
+    width: 100%; padding: 18px 20px;
+    background: var(--card); color: var(--ink);
+    border: 1px solid var(--line); border-radius: 18px;
+    font: inherit; text-align: left; cursor: pointer;
+    transition: background 0.2s, box-shadow 0.2s, border-color 0.2s;
+  }
+  .room:active { transform: scale(0.985); }
+  .bulb {
+    flex: none; width: 48px; height: 48px; border-radius: 50%;
+    display: grid; place-items: center;
+    background: var(--line); transition: background 0.2s;
+  }
+  .bulb svg { width: 26px; height: 26px; fill: none; stroke: var(--muted); stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+  .name { font-weight: 600; font-size: 18px; }
+  .meta { font-size: 13px; color: var(--muted); }
+  .state { margin-left: auto; font-weight: 700; font-size: 14px; letter-spacing: 0.04em; color: var(--muted); }
+  .room.on { border-color: var(--on); box-shadow: 0 0 0 1px var(--on), 0 8px 28px var(--on-glow); }
+  .room.on .bulb { background: var(--on); }
+  .room.on .bulb svg { stroke: var(--on-ink); }
+  .room.on .state { color: var(--ink); }
+
+  .all { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 12px; }
+  .all button {
+    padding: 14px; border-radius: 14px; border: 1px solid var(--line);
+    background: var(--card); color: var(--ink); font: inherit; font-weight: 600; cursor: pointer;
+  }
+  .all button:active { transform: scale(0.98); }
+
+  .help { margin-top: 28px; font-size: 13px; color: var(--muted); }
+  .help table { width: 100%; border-collapse: collapse; margin-top: 8px; }
+  .help td { padding: 6px 0; border-top: 1px solid var(--line); }
+  .help td:last-child { text-align: right; color: var(--ink); }
+  .offline main { opacity: 0.55; }
+</style>
+</head>
+<body class="offline">
+<main>
+  <header>
+    <h1>Gesture Home</h1>
+    <div class="status">
+      <span><span class="dot" id="broker-dot"></span><span id="broker-text">Connecting</span></span>
+      <span><span class="dot" id="board-dot"></span><span id="board-text">Board ?</span></span>
+    </div>
+  </header>
+  <p class="summary" id="summary">Waiting for the board…</p>
+
+  <section class="rooms">
+    <button class="room" data-room="living">
+      <span class="bulb"><svg viewBox="0 0 24 24"><path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-4 10.5c.8.8 1 1.5 1 2.5h6c0-1 .2-1.7 1-2.5A6 6 0 0 0 12 3z"/></svg></span>
+      <span><span class="name">Living room</span><br><span class="meta">1 finger</span></span>
+      <span class="state">OFF</span>
+    </button>
+    <button class="room" data-room="bedroom">
+      <span class="bulb"><svg viewBox="0 0 24 24"><path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-4 10.5c.8.8 1 1.5 1 2.5h6c0-1 .2-1.7 1-2.5A6 6 0 0 0 12 3z"/></svg></span>
+      <span><span class="name">Bedroom</span><br><span class="meta">2 fingers</span></span>
+      <span class="state">OFF</span>
+    </button>
+    <button class="room" data-room="kitchen">
+      <span class="bulb"><svg viewBox="0 0 24 24"><path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-4 10.5c.8.8 1 1.5 1 2.5h6c0-1 .2-1.7 1-2.5A6 6 0 0 0 12 3z"/></svg></span>
+      <span><span class="name">Kitchen</span><br><span class="meta">3 fingers</span></span>
+      <span class="state">OFF</span>
+    </button>
+  </section>
+
+  <section class="all">
+    <button id="all-on">All on</button>
+    <button id="all-off">All off</button>
+  </section>
+
+  <section class="help">
+    Tap a room to switch it, or use gestures at the camera:
+    <table>
+      <tr><td>Index finger</td><td>Living room</td></tr>
+      <tr><td>Index + middle</td><td>Bedroom</td></tr>
+      <tr><td>Index + middle + ring</td><td>Kitchen</td></tr>
+      <tr><td>Open palm</td><td>All on</td></tr>
+      <tr><td>Fist</td><td>All off</td></tr>
+    </table>
+  </section>
+</main>
+
+<script src="mqtt.min.js"></script>
+<script>
+  const NAMES = { living: "Living room", bedroom: "Bedroom", kitchen: "Kitchen" };
+  const state = {};
+  const $ = (id) => document.getElementById(id);
+
+  // the broker runs on the same Mac that served this page
+  const client = mqtt.connect(`ws://${location.hostname}:9001`, { reconnectPeriod: 2000 });
+
+  function setDot(id, ok) {
+    $(id).className = "dot " + (ok === null ? "" : ok ? "good" : "bad");
+  }
+
+  function render() {
+    document.querySelectorAll(".room").forEach((el) => {
+      const on = state[el.dataset.room] === "ON";
+      el.classList.toggle("on", on);
+      el.querySelector(".state").textContent = state[el.dataset.room] || "–";
+    });
+    const onRooms = Object.keys(NAMES).filter((k) => state[k] === "ON").map((k) => NAMES[k]);
+    if (Object.keys(state).length === 0) return;
+    $("summary").textContent = onRooms.length === 0 ? "All lights are off"
+      : onRooms.length === 3 ? "All lights are on"
+      : `${onRooms.join(" and ")} ${onRooms.length === 1 ? "is" : "are"} on`;
+  }
+
+  client.on("connect", () => {
+    setDot("broker-dot", true);
+    $("broker-text").textContent = "Connected";
+    client.subscribe(["home/lights/+/state", "home/esp32/status"]);
+  });
+  client.on("reconnect", () => { setDot("broker-dot", null); $("broker-text").textContent = "Reconnecting"; });
+  client.on("close", () => { setDot("broker-dot", false); $("broker-text").textContent = "Disconnected"; document.body.classList.add("offline"); });
+
+  client.on("message", (topic, payload) => {
+    const msg = payload.toString();
+    if (topic === "home/esp32/status") {
+      const online = msg === "online";
+      setDot("board-dot", online);
+      $("board-text").textContent = online ? "Board online" : "Board offline";
+      document.body.classList.toggle("offline", !online);
+      return;
+    }
+    state[topic.split("/")[2]] = msg;
+    render();
+  });
+
+  document.querySelectorAll(".room").forEach((el) =>
+    el.addEventListener("click", () => client.publish(`home/lights/${el.dataset.room}/set`, "TOGGLE")));
+  $("all-on").addEventListener("click", () => client.publish("home/lights/all/set", "ON"));
+  $("all-off").addEventListener("click", () => client.publish("home/lights/all/set", "OFF"));
+</script>
+</body>
+</html>

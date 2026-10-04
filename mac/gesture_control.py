@@ -1,9 +1,11 @@
+import argparse
 import os
 import time
 
 import cv2
 import joblib
 import mediapipe as mp
+import paho.mqtt.client as mqtt
 import serial
 import serial.tools.list_ports
 
@@ -12,6 +14,16 @@ from gesture_features import landmarks_to_features
 STABLE_FRAMES = 8  # frames a gesture must be held before it's sent (~0.3s)
 MIN_CONFIDENCE = 0.7  # below this the model's guess is treated as NONE
 MODEL_FILE = os.path.join(os.path.dirname(__file__), "gesture_model.pkl")
+MQTT_HOST = "localhost"  # the broker runs on this Mac
+
+# gesture -> (topic, payload); the ESP32 owns the light state and does the toggling
+MQTT_COMMANDS = {
+    "1": ("home/lights/living/set", "TOGGLE"),
+    "2": ("home/lights/bedroom/set", "TOGGLE"),
+    "3": ("home/lights/kitchen/set", "TOGGLE"),
+    "FIST": ("home/lights/all/set", "OFF"),
+    "PALM": ("home/lights/all/set", "ON"),
+}
 
 
 def find_esp32_port():
@@ -33,6 +45,33 @@ def open_serial():
     time.sleep(2)  # let the ESP32 finish resetting after the serial connection opens
     print(f"Connected to {port}")
     return ser
+
+
+class MqttSender:
+    def __init__(self):
+        self.client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2, client_id="gesture-camera")
+        self.client.connect(MQTT_HOST, 1883)
+        self.client.loop_start()
+        print(f"Connected to MQTT broker on {MQTT_HOST}")
+
+    def send(self, gesture):
+        if gesture in MQTT_COMMANDS:
+            self.client.publish(*MQTT_COMMANDS[gesture])
+
+    def close(self):
+        self.client.loop_stop()
+        self.client.disconnect()
+
+
+class SerialSender:
+    def __init__(self):
+        self.ser = open_serial()
+
+    def send(self, gesture):
+        self.ser.write((gesture + "\n").encode())
+
+    def close(self):
+        self.ser.close()
 
 
 def fingers_up(landmarks):
@@ -64,7 +103,10 @@ def classify_with_model(model, landmarks):
 
 
 def main():
-    ser = open_serial()
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--serial", action="store_true", help="send over USB serial instead of MQTT/WiFi")
+    args = parser.parse_args()
+    sender = SerialSender() if args.serial else MqttSender()
 
     if os.path.exists(MODEL_FILE):
         model = joblib.load(MODEL_FILE)
@@ -110,7 +152,7 @@ def main():
                 candidate = gesture
                 stable_count = 1
             if stable_count == STABLE_FRAMES and gesture != last_sent:
-                ser.write((gesture + "\n").encode())
+                sender.send(gesture)
                 last_sent = gesture
 
             if cv2.waitKey(1) & 0xFF == ord("q"):
@@ -118,7 +160,7 @@ def main():
     finally:
         cap.release()
         cv2.destroyAllWindows()
-        ser.close()
+        sender.close()
 
 
 if __name__ == "__main__":
